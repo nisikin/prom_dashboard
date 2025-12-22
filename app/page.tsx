@@ -1,86 +1,116 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Layout, Badge, Tag } from 'antd';
+import { Badge, Tag, Spin } from 'antd';
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { 
-  Activity, 
-  Server, 
-  Cpu, 
-  MemoryStick, 
-  Network, 
-  LayoutDashboard, 
-  AlertTriangle,
-  Menu as MenuIcon,
-  Search,
-  ChevronLeft,
-  ChevronRight
+  Activity, Server, Cpu, MemoryStick, Network, LayoutDashboard, 
+  AlertTriangle, Menu as MenuIcon, Search, ChevronRight 
 } from 'lucide-react';
 
-// 样式常量
-const COLORS = {
-  bg: "#020617",
-  card: "#111827",
-  border: "#1f2937",
-  primary: "#6366f1",
-  secondary: "#ec4899",
-  success: "#10b981",
-  axis: "#6b7280"
-};
+// 配置常量
+const SIDEBAR_WIDTH = { expand: "w-72", collapse: "w-16" }; // 宽度略微增加以适配大字体
+const COLORS = { primary: "#6366f1", secondary: "#ec4899", axis: "#9ca3af" };
 
-export default function EnterpriseMonitor() {
+interface HistoryPoint {
+  time: string;
+  cpu: number;
+  mem: number;
+}
+
+export default function AdvancedMonitor() {
   const [collapsed, setCollapsed] = useState(false);
-  const [history, setHistory] = useState<any>({ cpu: [], mem: [], net: [] });
+  const [nodes, setNodes] = useState<any[]>([]);
+  const [history, setHistory] = useState<HistoryPoint[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // 模拟数据流
+  const PROMETHEUS_BASE = "http://10005480di8ni.vicp.fun";
+
+  const fetchData = async () => {
+    try {
+      const targetRes = await fetch(`${PROMETHEUS_BASE}/api/v1/targets`);
+      const targetData = await targetRes.json();
+      const targetIp = "10.168.1.131:9100";
+      const cpuQuery = `1 - avg(irate(node_cpu_seconds_total{instance="${targetIp}",mode="idle"}[5m]))`;
+      const memQuery = `(node_memory_MemTotal_bytes{instance="${targetIp}"} - node_memory_MemAvailable_bytes{instance="${targetIp}"}) / node_memory_MemTotal_bytes{instance="${targetIp}"} * 100`;
+      
+      const [cpuRes, memRes] = await Promise.all([
+        fetch(`${PROMETHEUS_BASE}/api/v1/query?query=${encodeURIComponent(cpuQuery)}`),
+        fetch(`${PROMETHEUS_BASE}/api/v1/query?query=${encodeURIComponent(memQuery)}`)
+      ]);
+
+      const cpuJson = await cpuRes.json();
+      const memJson = await memRes.json();
+
+      if (targetData.status === "success") {
+        const rawTargets = targetData.data.activeTargets || [];
+        setNodes(rawTargets.map((t: any) => ({
+          ...t,
+          displayIp: t.instance || t.labels?.instance || "未知IP"
+        })).filter((t: any) => !t.displayIp.includes("127.0.0.1")));
+      }
+
+      const currentCpu = cpuJson.data?.result?.[0]?.value?.[1];
+      const currentMem = memJson.data?.result?.[0]?.value?.[1];
+
+      if (currentCpu !== undefined && currentMem !== undefined) {
+        const cpuVal = parseFloat(currentCpu) * 100;
+        const memVal = parseFloat(currentMem);
+        const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+        setHistory(prev => {
+          const newHistory = [...prev, { 
+            time: now, 
+            cpu: Number(cpuVal.toFixed(2)), 
+            mem: Number(memVal.toFixed(2)) 
+          }];
+          return newHistory.slice(-15);
+        });
+      }
+      setLoading(false);
+    } catch (err) {
+      console.error("数据抓取异常:", err);
+    }
+  };
+
   useEffect(() => {
-    const timer = setInterval(() => {
-      const now = new Date().toLocaleTimeString('en-GB', { hour12: false });
-      const getVal = (base: number, v: number) => Math.floor(base + Math.random() * v);
-      setHistory((prev: any) => {
-        const update = (arr: any[], val: number) => [...arr, { time: now, value: val }].slice(-15);
-        return {
-          cpu: update(prev.cpu, getVal(35, 25)),
-          mem: update(prev.mem, getVal(58, 4)),
-          net: update(prev.net, getVal(120, 380))
-        };
-      });
-    }, 2000);
+    fetchData();
+    const timer = setInterval(fetchData, 5000);
     return () => clearInterval(timer);
   }, []);
 
-  // 图表组件 (带坐标轴和单位)
-  const MetricChart = ({ title, data, color, unit, domain = ['auto', 'auto'] }: any) => (
+  // --- 内部组件：封装图表适配器 ---
+  const MetricChart = ({ title, dataKey, color, unit, domain }: any) => (
     <div className="rounded-xl border border-gray-800 bg-[#111827] flex flex-col shadow-xl overflow-hidden h-full">
-      <div className="px-5 py-4 border-b border-gray-800 flex justify-between items-center bg-gray-900/50">
-        <div className="flex items-center gap-3">
-          <div className="w-1 h-4 rounded-full" style={{ background: color }}></div>
-          <span className="text-sm font-semibold text-gray-200 tracking-wide uppercase">{title}</span>
+      <div className="px-6 py-5 border-b border-gray-800 flex justify-between items-center bg-gray-900/50">
+        <div className="flex items-center gap-4">
+          <div className="w-1.5 h-6 rounded-full" style={{ background: color }}></div>
+          <span className="text-base font-bold text-gray-200 uppercase tracking-widest">{title}</span>
         </div>
-        <div className="flex items-baseline gap-1 text-white">
-          <span className="text-2xl font-mono font-bold">{data.length > 0 ? data[data.length - 1].value : 0}</span>
-          <span className="text-xs text-gray-500 font-medium">{unit}</span>
+        <div className="flex items-baseline gap-2 text-white">
+          <span className="text-4xl font-mono font-bold">
+            {history.length > 0 ? (history[history.length - 1] as any)[dataKey] : '--'}
+          </span>
+          <span className="text-sm text-gray-400 font-medium">{unit}</span>
         </div>
       </div>
-      <div className="flex-1 min-h-0 pt-4 w-full px-2 pb-2">
+      <div className="flex-1 pt-6 px-4 pb-4">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+          <AreaChart data={history} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <defs>
-              <linearGradient id={`grad-${title}`} x1="0" y1="0" x2="0" y2="1">
+              <linearGradient id={`grad-${dataKey}`} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={color} stopOpacity={0.4}/>
                 <stop offset="100%" stopColor={color} stopOpacity={0}/>
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" strokeOpacity={0.2} />
-            <XAxis dataKey="time" tick={{ fill: COLORS.axis, fontSize: 11 }} tickLine={false} axisLine={false} />
-            <YAxis tick={{ fill: COLORS.axis, fontSize: 11 }} tickLine={false} axisLine={false} width={35} domain={domain} />
+            <XAxis dataKey="time" tick={{ fill: COLORS.axis, fontSize: 12 }} tickLine={false} axisLine={false} />
+            <YAxis tick={{ fill: COLORS.axis, fontSize: 12 }} tickLine={false} axisLine={false} width={40} domain={domain} />
             <Tooltip 
-              contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151', color: '#fff', borderRadius: '8px' }}
+              contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151', borderRadius: '10px', fontSize: '14px' }}
               itemStyle={{ color: '#fff' }}
-              labelStyle={{ color: '#9ca3af' }}
-              formatter={(value: number) => [`${value} ${unit}`, title]}
             />
-            <Area type="monotone" dataKey="value" stroke={color} fill={`url(#grad-${title})`} strokeWidth={2} isAnimationActive={false} />
+            <Area type="monotone" dataKey={dataKey} stroke={color} fill={`url(#grad-${dataKey})`} strokeWidth={3} isAnimationActive={false} />
           </AreaChart>
         </ResponsiveContainer>
       </div>
@@ -89,118 +119,92 @@ export default function EnterpriseMonitor() {
 
   return (
     <div className="flex h-screen w-full bg-[#020617] text-white overflow-hidden font-sans">
-      <style jsx global>{`body, html { margin: 0; padding: 0; background-color: #020617; }`}</style>
-
-      {/* --- 侧边栏 (Sidebar) --- */}
-      <div className={`flex flex-col border-r border-gray-800 bg-[#0b0f19] transition-all duration-300 ${collapsed ? 'w-16' : 'w-64'}`}>
-        
-        {/* Logo 区域：现在只有 Logo */}
-        <div className="h-16 flex items-center px-4 border-b border-gray-800">
-          <div className="flex items-center gap-2 overflow-hidden whitespace-nowrap">
-            <Activity className="text-indigo-500 shrink-0" size={24} />
-            {!collapsed && <span className="text-lg font-bold tracking-wider text-white">NET.SCOPE</span>}
+      {/* 侧边栏 */}
+      <div className={`flex flex-col border-r border-gray-800 bg-[#0b0f19] transition-all duration-300 z-20 ${collapsed ? SIDEBAR_WIDTH.collapse : SIDEBAR_WIDTH.expand}`}>
+        <div className="h-20 flex items-center px-6 border-b border-gray-800 overflow-hidden">
+          <div className={`flex items-center gap-3 ${collapsed ? 'w-full justify-center' : ''}`}>
+            <Activity className="text-indigo-500 shrink-0" size={32} />
+            {!collapsed && <span className="text-xl font-black tracking-tighter uppercase">Net.Scope</span>}
           </div>
         </div>
 
-        {/* 导航区域：折叠按钮现在在 Dashboard 上方 */}
-        <div className="flex-1 py-4 space-y-1 px-3">
-          
-          {/* 新增：位于 Dashboard 上方的折叠按钮 */}
-          <div className={`flex items-center mb-4 ${collapsed ? 'justify-center' : 'px-3'}`}>
-            <button 
-              onClick={() => setCollapsed(!collapsed)}
-              className="p-2 rounded-lg text-gray-500 hover:text-white hover:bg-gray-800 transition-all border border-transparent hover:border-gray-700 shadow-sm"
-            >
-              {collapsed ? <ChevronRight size={20} /> : <div className="flex items-center gap-2 font-medium text-xs uppercase tracking-tighter"><MenuIcon size={20} /></div>}
+        <div className={`flex-1 py-6 space-y-3 ${collapsed ? 'px-0' : 'px-4'}`}>
+          <div className={`flex items-center mb-8 w-full ${collapsed ? 'justify-center' : 'px-4'}`}>
+            <button onClick={() => setCollapsed(!collapsed)} className="p-3 rounded-xl text-gray-500 hover:text-white hover:bg-gray-800 transition-all border border-gray-800/50">
+              {collapsed ? <ChevronRight size={24} /> : <MenuIcon size={24} />}
             </button>
           </div>
 
-          {/* 导航项 */}
-          <div className="flex items-center px-3 py-2.5 bg-indigo-600/10 text-indigo-400 rounded-lg cursor-pointer border border-indigo-500/20 mb-2">
-            <LayoutDashboard size={20} className="shrink-0" />
-            {!collapsed && <span className="ml-3 text-sm font-semibold uppercase tracking-wide">Dashboard</span>}
+          <div className={`flex items-center cursor-pointer transition-all mx-auto ${collapsed ? 'w-12 h-12 justify-center rounded-2xl bg-indigo-600/10 text-indigo-400' : 'px-4 py-3.5 rounded-xl bg-indigo-600/10 text-indigo-400 border border-indigo-500/20'}`}>
+            <LayoutDashboard size={24} className="shrink-0" />
+            {!collapsed && <span className="ml-4 text-base font-bold uppercase tracking-wide">Dashboard</span>}
           </div>
           
-          <div className="flex items-center px-3 py-2.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg cursor-pointer transition-colors">
-            <Server size={20} className="shrink-0" />
-            {!collapsed && <span className="ml-3 text-sm font-semibold uppercase tracking-wide">Nodes</span>}
-          </div>
-
-           <div className="flex items-center px-3 py-2.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg cursor-pointer transition-colors">
-            <AlertTriangle size={20} className="shrink-0" />
-            {!collapsed && <span className="ml-3 text-sm font-semibold uppercase tracking-wide">Alerts</span>}
+          <div className={`flex items-center cursor-pointer text-gray-400 hover:text-white hover:bg-gray-800 transition-all mx-auto ${collapsed ? 'w-12 h-12 justify-center rounded-2xl' : 'px-4 py-3.5 rounded-xl'}`}>
+            <Server size={24} className="shrink-0" />
+            {!collapsed && <span className="ml-4 text-base font-bold uppercase tracking-wide">Nodes List</span>}
           </div>
         </div>
       </div>
 
-      {/* --- 主内容区 --- */}
+      {/* 主内容 */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 border-b border-gray-800 bg-[#0b0f19]/80 backdrop-blur-md flex items-center justify-between px-6">
-          <div className="text-gray-400 flex items-center gap-2 bg-gray-900 px-3 py-1.5 rounded-full border border-gray-800">
-            <Search size={14} />
-            <span className="text-xs">Search metrics...</span>
+        <header className="h-20 border-b border-gray-800 bg-[#0b0f19]/80 backdrop-blur-md flex items-center justify-between px-8">
+          <div className="text-gray-400 flex items-center gap-3 bg-gray-900 px-4 py-2 rounded-full border border-gray-800 text-sm">
+            <Search size={18} /> <span>Active Nodes: {nodes.length}</span>
           </div>
           <div className="flex items-center gap-4">
-            <Tag color="#1f2937" className="text-green-400 border-green-900 bg-green-900/20 px-2 py-0.5 text-xs font-medium">● ONLINE</Tag>
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-xs text-white">AD</div>
+            <Tag color="#064e3b" className="text-green-400 border-green-900 px-3 py-1 text-xs font-bold uppercase tracking-tighter">● Online</Tag>
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-6 scrollbar-hide">
-          {/* KPI 概览 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
-            <KPICard title="Active Nodes" value="8" unit="Nodes" icon={Server} color={COLORS.primary} />
-            <KPICard title="Avg Load" value="42" unit="%" icon={Cpu} color={COLORS.secondary} />
-            <KPICard title="Mem Usage" value="64" unit="GB" icon={MemoryStick} color="#f59e0b" />
-            <KPICard title="Net I/O" value="1.2" unit="Gbps" icon={Network} color={COLORS.success} />
-          </div>
+        <main className="flex-1 overflow-y-auto p-8 scrollbar-hide">
+          {loading && history.length === 0 ? (
+            <div className="h-full w-full flex items-center justify-center flex-col gap-6">
+              <Spin size="large" />
+              <p className="text-gray-400 text-sm uppercase tracking-[0.2em]">Synchronizing Prometheus Data...</p>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8 h-[450px]">
+                <MetricChart title="CPU Utilization" dataKey="cpu" color="#6366f1" unit="%" domain={[0, 100]} />
+                <MetricChart title="Memory Usage" dataKey="mem" color="#ec4899" unit="%" domain={[0, 100]} />
+              </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6 h-[380px]">
-            <div className="lg:col-span-2 h-full">
-              <MetricChart title="Cluster CPU Usage" data={history.cpu} color={COLORS.primary} unit="%" domain={[0, 100]} />
-            </div>
-            <div className="flex flex-col gap-5 h-full">
-              <div className="flex-1 min-h-0"><MetricChart title="Memory (RAM)" data={history.mem} color={COLORS.secondary} unit="GB" /></div>
-              <div className="flex-1 min-h-0"><MetricChart title="Network Out" data={history.net} color={COLORS.success} unit="Mbps" /></div>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-gray-800 bg-[#111827] overflow-hidden shadow-lg mb-6 text-white">
-            <div className="px-6 py-4 border-b border-gray-800 flex items-center justify-between"><h3 className="text-sm font-bold uppercase tracking-wide">Recent Events</h3><Badge count={3} color="#ef4444" size="small" /></div>
-            <div className="w-full overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead className="bg-gray-900/50 text-gray-500 text-xs uppercase font-semibold">
-                  <tr><th className="px-6 py-3 border-b border-gray-800">Time</th><th className="px-6 py-3 border-b border-gray-800">Status</th><th className="px-6 py-3 border-b border-gray-800">Source</th><th className="px-6 py-3 border-b border-gray-800">Message</th></tr>
-                </thead>
-                <tbody className="text-sm divide-y divide-gray-800">
-                  {[1, 2, 3].map((_, i) => (
-                    <tr key={i} className="hover:bg-white/5 transition-colors group">
-                      <td className="px-6 py-3 font-mono text-gray-500 group-hover:text-gray-300">2024-12-20 10:45:{12 + i}</td>
-                      <td className="px-6 py-3"><span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20">CRITICAL</span></td>
-                      <td className="px-6 py-3 text-gray-300">node-exporter-{i}</td>
-                      <td className="px-6 py-3 text-gray-400">Memory usage exceeded threshold (9{i}%)</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+              <div className="rounded-2xl border border-gray-800 bg-[#111827] overflow-hidden shadow-2xl">
+                 <div className="px-8 py-6 border-b border-gray-800 flex justify-between bg-gray-900/30">
+                    <h3 className="text-sm font-bold uppercase tracking-[0.15em] text-gray-400">Target Environment</h3>
+                    <Badge count={nodes.length} color="#6366f1" style={{ fontSize: '14px', height: '24px', minWidth: '24px', lineHeight: '24px' }} />
+                 </div>
+                 <table className="w-full text-left">
+                    <thead className="bg-gray-900/50 text-xs text-gray-500 uppercase font-black tracking-widest">
+                       <tr>
+                         <th className="px-8 py-5 border-b border-gray-800">Endpoint</th>
+                         <th className="px-8 py-5 border-b border-gray-800 text-center">Health</th>
+                         <th className="px-8 py-5 border-b border-gray-800">Internal Labels</th>
+                       </tr>
+                    </thead>
+                    <tbody className="text-sm divide-y divide-gray-800">
+                       {nodes.map((node, i) => (
+                         <tr key={i} className="hover:bg-indigo-500/5 transition-colors group">
+                           <td className="px-8 py-5 font-mono text-indigo-400 text-base group-hover:text-indigo-300">{node.displayIp}</td>
+                           <td className="px-8 py-5 text-center">
+                             <span className={`text-xs px-3 py-1 rounded-full font-black uppercase tracking-tighter ${node.health === 'up' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+                               {node.health}
+                             </span>
+                           </td>
+                           <td className="px-8 py-5 text-gray-500 text-xs truncate max-w-[300px] font-mono">
+                             {JSON.stringify(node.labels)}
+                           </td>
+                         </tr>
+                       ))}
+                    </tbody>
+                 </table>
+              </div>
+            </>
+          )}
         </main>
       </div>
     </div>
   );
 }
-
-// KPI 卡片组件
-const KPICard = ({ title, value, unit, icon: Icon, color }: any) => (
-  <div className="flex-1 p-5 rounded-xl border border-gray-800 bg-[#111827] flex items-center justify-between shadow-lg">
-    <div>
-      <p className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-1">{title}</p>
-      <div className="flex items-baseline gap-2 text-white">
-        <span className="text-4xl font-bold font-sans">{value}</span>
-        <span className="text-sm text-gray-500 font-medium">{unit}</span>
-      </div>
-    </div>
-    <div className="p-3 rounded-lg bg-opacity-10" style={{ backgroundColor: `${color}20` }}><Icon size={24} style={{ color: color }} /></div>
-  </div>
-);
