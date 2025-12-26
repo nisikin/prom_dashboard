@@ -1,12 +1,13 @@
-from models.metric import metric, metric_value
+from models.metric import metric,metric_value
 from core.config import settings
 from tool.time import *
 import httpx
 
 base_url = settings.PROMETHEUS_URL + "api/v1/query"
 base_url_range = settings.PROMETHEUS_URL + "api/v1/query_range"
-def average_cpu_usage()-> list[metric]:
-    query = '(1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) by (instance)) * 100'
+
+def average_disk_usage() -> list[metric]:
+    query = '(1 - (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs"})) * 100'
     params = {"query": query}
     r = httpx.get(base_url, params=params, timeout=None)
     if r.status_code == 200:
@@ -31,11 +32,10 @@ def average_cpu_usage()-> list[metric]:
             return []
     return []
 
-
-def average_cpu_usage_range(start: str, end: str, step: str) -> list[metric]:
+def average_disk_usage_range(start: str, end: str, step: str) -> list[metric]:
     start = format_time(start)
     end = format_time(end)
-    query = '(1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) by (instance)) * 100'
+    query = '(1 - (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs"})) * 100'
     params = {"query": query, "start": start, "end": end, "step": step}
     r = httpx.get(base_url_range, params=params, timeout=None)
     if r.status_code == 200:
