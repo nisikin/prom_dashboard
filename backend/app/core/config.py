@@ -9,5 +9,7 @@ class Settings(BaseSettings):
     LOCATION: str = "Asia/Shanghai"
     DEV: bool = False
 
+    ZAI_API_KEY: str = "your-api-key"
+
 
 settings = Settings()
