@@ -4,7 +4,7 @@ import json
 
 
 class Client:
-    def __init__(self, model: str = "glm-4-flashx-250414", sys_prompt: str = ""):
+    def __init__(self, model: str = "glm-4-air-250414", sys_prompt: str = ""):
         self.client = ZhipuAiClient(api_key=settings.ZAI_API_KEY)
         self.model = model
         self.messages = []
