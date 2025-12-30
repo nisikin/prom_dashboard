@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/sidebar"
 import { ChartExample } from "@/components/chart-example"
 import { PromAISearch } from "@/components/prom-ai-search"
+import { CustomChartCard } from "@/components/custom-chart-card"
 
 
 export default function Page() {
@@ -36,7 +37,7 @@ export default function Page() {
             <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
               <PromAISearch />
               <div
-                className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-3">
+                className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-2">
                 <Card className="@container/card">
                   <CardHeader>
                     <CardDescription>Example Card</CardDescription>
@@ -101,6 +102,7 @@ export default function Page() {
                     <div className="text-muted-foreground">Engagement exceed targets</div>
                   </CardFooter>
                 </Card>
+                <CustomChartCard query="node_memory_MemAvailable_bytes" title="Available Memory" upperBound={8 * 1024 * 1024 * 1024} y_func={(value) => { return String((value / 1024 / 1024 / 1024).toFixed(2)) + "GB" }} />
               </div>
               <div className="px-4 lg:px-6">
                 <ChartExample />

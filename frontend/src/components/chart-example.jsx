@@ -22,10 +22,14 @@ export function ChartExample() {
     const start = format(new Date(Date.now() - 30 * 60 * 1000), "yyyy-MM-dd HH:mm:ss")
     const end = format(new Date(), "yyyy-MM-dd HH:mm:ss")
     queryMetricsRange("/metric/average_cpu_usage_range", start, end, timeStep).then((data) => {
-      for (let i = 0; i < data.length; i++) {
-        data[i]["y"] = 100
+      try {
+        for (let i = 0; i < data.length; i++) {
+          data[i]["y"] = 100
+        }
+        setChartData(data)
+      } catch (error) {
+        console.error("Error processing chart data:", error);
       }
-      setChartData(data)
     })
   }
 

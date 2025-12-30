@@ -19,7 +19,11 @@ export async function queryMetrics(path) {
     line["time"] = res.data[0].values[0].timestamp;
     for (var i = 0; i < res.data.length; i++) {
       var metric = res.data[i];
-      line[metric.instance] = parseFloat(metric.values[0].value).toFixed(2);
+      if (metric.values[0] === undefined) {
+        line[metric.instance] = 0;
+      } else {
+        line[metric.instance] = parseFloat(metric.values[0].value).toFixed(2);
+      }
     }
     return line;
   } catch (error) {
@@ -47,7 +51,11 @@ export async function queryMetricsRange(path, start, end, step = "5s") {
       line["time"] = res.data[0].values[i].timestamp;
       for (var j = 0; j < res.data.length; j++) {
         var metric = res.data[j];
-        line[metric.instance] = parseFloat(metric.values[i].value).toFixed(2);
+        if (metric.values[i] === undefined) {
+          line[metric.instance] = 0;
+        } else {
+          line[metric.instance] = parseFloat(metric.values[i].value).toFixed(2);
+        }
       }
       data.push(line);
     }

@@ -5,7 +5,6 @@ import { generatePromQL } from "@/lib/utils"
 import { IconSparkles2 } from "@tabler/icons-react"
 import { CodeBlock } from "@/components/ui/code-block";
 import { LoaderOne } from "@/components/ui/loader";
-import { motion } from "motion/react"
 
 const placeholders = [
     "Check CPU usage",
