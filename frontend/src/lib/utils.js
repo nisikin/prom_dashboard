@@ -81,3 +81,14 @@ export function createChartConfig(line) {
   }
   return config;
 }
+
+export async function generatePromQL(userPrompt) {
+  try {
+    const res = await axios.get(`${API_URL}/llm/get_promql?prompt=${encodeURIComponent(userPrompt)}`);
+    console.log(res);
+    return res.data;
+  } catch (error) {
+    console.error("Error generating PromQL:", error);
+    return "";
+  }
+}
