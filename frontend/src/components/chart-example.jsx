@@ -25,7 +25,6 @@ export function ChartExample() {
       for (let i = 0; i < data.length; i++) {
         data[i]["y"] = 100
       }
-      console.log("fetchData")
       setChartData(data)
     })
   }
