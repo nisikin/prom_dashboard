@@ -9,7 +9,7 @@ router = APIRouter(prefix="/metric", tags=["metric"])
 
 @router.get("/average_cpu_usage")
 def average_cpu_usage() -> list[metric]:
-    from query.cpu import average_cpu_useage as a_c_u
+    from query.cpu import average_cpu_usage as a_c_u
 
     return a_c_u()
 
