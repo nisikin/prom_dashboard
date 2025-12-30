@@ -11,5 +11,5 @@ def get_promql(prompt: str) -> str:
         promql = generate_PromQL(prompt)
         return promql
     except Exception as e:
-        return "error, please try again"
+        return {"error": str(e)}
 
