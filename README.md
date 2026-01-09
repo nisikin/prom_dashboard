@@ -13,12 +13,6 @@ This is a dashboard project for prometheus(simiar to grafana).
 
 You can watch our demo video under `demo/demo.mp4`
 
-## Project Structure
-
-```
-
-```
-
 ## Quick Start
 
 ### Run Backend
