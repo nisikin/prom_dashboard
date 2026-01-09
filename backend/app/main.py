@@ -12,8 +12,8 @@ app = FastAPI(
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
-if settings.DEV:
-    print("DEV MODE")
+if settings.CORS_ORIGINS:
+    print("CORS_ORIGINS enabled")
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"]

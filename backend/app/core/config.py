@@ -7,7 +7,8 @@ class Settings(BaseSettings):
     SERVER_PORT: int = 8000
     PROMETHEUS_URL: str = "http://youtr-prometheus-location/"
     LOCATION: str = "Asia/Shanghai"
-    DEV: bool = False
+    CORS_ORIGINS: True
+
 
     ZAI_API_KEY: str = "your-api-key"
 
