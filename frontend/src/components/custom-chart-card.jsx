@@ -17,7 +17,7 @@ export function CustomChartCard({
     query = "",
     upperBound = "*",
     lowerBound = 0,
-    y_func = (value) => {return value}
+    y_func = (value) => { return value }
 }) {
     const [chartData, setChartData] = React.useState([])
     const [timeStep, setTimeStep] = React.useState("10s");
@@ -32,7 +32,22 @@ export function CustomChartCard({
                     if (lowerBound != 0 && i == 0) {
                         data[i]["y"] = lowerBound
                     } else {
-                        data[i]["y"] = upperBound
+                        if (upperBound != "*") {
+                            data[i]["y"] = upperBound
+                        }
+                        else {
+                            var max = 0
+                            for (var key in data[i]) {
+                                if (key == "time") {
+                                    continue
+                                }
+                                if (data[i][key] > max) {
+                                    max = data[i][key]
+                                }
+                            }
+                            console.log(max)
+                            data[i]["y"] = max
+                        }
                     }
                 }
                 setChartData(data)
@@ -67,17 +82,15 @@ export function CustomChartCard({
                 <ChartContainer config={chartConfig} className="aspect-auto h-[250px] w-full">
                     <LineChart data={chartData} accessibilityLayer >
                         <CartesianGrid vertical={false} />
-                        {upperBound != "*" &&
-                            <YAxis
-                                dataKey="y"
-                                tickLine={false}
-                                axisLine={false}
-                                tickMargin={8}
-                                tickFormatter={(value) => {
-                                    return y_func(value)
-                                }}
-                            />
-                        }
+                        <YAxis
+                            dataKey="y"
+                            tickLine={false}
+                            axisLine={false}
+                            tickMargin={8}
+                            tickFormatter={(value) => {
+                                return y_func(value)
+                            }}
+                        />
                         <XAxis
                             dataKey="time"
                             tickLine={false}

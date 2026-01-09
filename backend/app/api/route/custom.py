@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from models.metric import metric
-from query.custom import custom_query
+from query.custom import custom_query, custom_query_range
 from tool.time import to_utc_str
 from core.config import settings
 
@@ -19,4 +19,4 @@ def custom_query_range_endpoint(
 ) -> list[metric]:
     start = to_utc_str(start, settings.LOCATION)
     end = to_utc_str(end, settings.LOCATION)
-    return custom_query(query, start, end, step)
+    return custom_query_range(query, start, end, step)
