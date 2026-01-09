@@ -1,6 +1,29 @@
-# prom_dashboard
+# Prom Dashboard
+
+This is a dashboard project for prometheus(simiar to grafana).
+
+## Features
+
+- [x] AI PromQL Advice - AI generated PromQL advice based on GLM 4 air
+![](demo/demo1.png)
+- [x] Metric Query
+![](demo/demo2.png)
+- [x] SSH Terminal
+![](demo/demo3.png)
+
+You can watch our demo video under `demo/demo.mp4`
+
+## Project Structure
+
+```
+
+```
+
+## Quick Start
 
 ### Run Backend
+
+The backend is Based on FastAPI, using uv to manage the project.
 
 #### 1. Set up environment
 
@@ -11,7 +34,7 @@ pip install uv
 ```
 
 ------------------------------------------------------------------------------------------------
-**ex.** How to change source for uv(换源)
+**ex.** How to change source for uv(for China mainland)
 
 create uv global config file:
 
@@ -39,25 +62,24 @@ Then, run `uv sync` under `/backend`.
 backend/ $ uv run app/main.py
 ```
 
-For development, you need to set `DEV` environment variable to `true` (see `app/core/config.py` for details)
-
-- windows powershell:
-```bash
-$env:DEV = "true"
-uv run app/main.py
-```
-
-- linux/macos terminal:
-```bash
-export DEV="true"
-uv run app/main.py
-```
-
 Then, open `http://localhost:8000/docs` to see the API documentation
+
+#### 3. Config
+
+We use pydantic setting to config the backend.
+
+```bash
+# setup your prometheus location
+export PROMETHEUS_URL="your prometheus url"
+# setup your glm api key
+export ZAI_API_KEY="your glm api key"
+```
+
+See `app/core/config.py` for more details.
 
 ### Run Frontend
 
-Under `/frontend`, run
+The frontend is based on Next.js. Under `/frontend`, run
 
 #### 1. Install dependencies
 
@@ -70,3 +92,11 @@ npm install
 ```bash
 npm run dev
 ```
+
+#### 3. Config
+
+Edit `src/lib/config.js` to change the backend url.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
